@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html>
-<head>
-<title>Facebook Login JavaScript Example</title>
-<meta charset="UTF-8">
-</head>
+  <head>
+  <title>Facebook Login JavaScript Example</title>
+  <meta charset="UTF-8">
+  </head>
 <body>
+<link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.4/jquery.mobile-1.4.4.min.css">
+<script language="javascript" type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script src="http://code.jquery.com/mobile/1.4.4/jquery.mobile-1.4.4.min.js"></script>
 <script type="text/javascript"src="secrets.js"></script>
 <script>
+  var name = '';
+  var nameToThreadID = {};
   // This is called with the results from from FB.getLoginStatus().
   function statusChangeCallback(response) {
     console.log('statusChangeCallback');
@@ -17,6 +22,16 @@
     // for FB.getLoginStatus().
     if (response.status === 'connected') {
       // Logged into your app and Facebook.
+      FB.api(
+        "/me/",
+        function (response) {
+          if (response && !response.error) {
+            /* handle the result */
+            name = response['name'];
+            console.log(name);
+          }
+        }
+      );
       query();
     } else if (response.status === 'not_authorized') {
       // The person is logged into Facebook, but not your app.
@@ -93,17 +108,56 @@
         if (response && !response.error) {
           /* handle the result */
           console.log(response);
+          recursivelyAddContacts(response);
         }
       }
     );
   }
 
-  function query2() {
-    FB.api('/fql?=select+thread_id+from+thread+where+viewer_id=me()+and+folder_id=0', 'get', function(response) {
-      console.log(response);
-    });
+  var contactArray = [];
+  var conversationID = 0;
+  var messageData = {};
+  function recursivelyAddContacts(results) {
+    for (var i=0; i < results['data'].length; i++) {
+      var contactsInConversation = [];
+      var pictureId = -1;
+      for (var j=0; j < results['data'][i]['to']['data'].length; j++) {
+        var contact = results['data'][i]['to']['data'][j]['name'];
+        if (contact != name) {
+          contactsInConversation.push(contact);
+          if (pictureId == -1) {
+            pictureId = results['data'][i]['to']['data'][j]['id'];
+          }
+        }
+      }
+      contactArray.push(contactsInConversation);
+      fuckFacebook(pictureId, contactsInConversation, conversationID);
+      conversationID += 1;
+      messageData[contactsInConversation.join(", ")] = results['data'][i];
+      //console.log(contactsInConversation);
+    }
   }
 
+function fuckFacebook(pictureId, contactsInConversation, conversationID) {
+  FB.api(
+    "/" + pictureId + "/picture",
+    function (response) {
+      if (response && !response.error) {
+        /* handle the result */
+        //console.log(response);
+        $('#contact-list').append('<li><a href="" data-id="' + String.valueOf(conversationID) + '"><img src="' +response['data']['url']+'"/><h3>' + contactsInConversation.join(", ") + '</h3></a></li>');
+        $('#contact-list').listview('refresh');
+      }
+    }
+  );
+}
+
+$(document).on('vclick', '#contact-list li a', function(){  
+    //contactInfo.id = $(this).attr('data-id');
+    z = $(this).attr('data-id');
+    console.log(messageData[$(this)['context']['text']]);
+    $.mobile.changePage( "#headline", { transition: "slide", changeHash: false });
+});
 </script>
 
 <!--
@@ -111,6 +165,37 @@
   the JavaScript SDK to present a graphical Login button that triggers
   the FB.login() function when clicked.
 -->
+
+<div data-role="page" id="home">
+    <div data-theme="a" data-role="header">
+        <h3>
+            Choose a Contact
+        </h3>
+    </div>        
+    <div data-role="content">
+        <div class="example-wrapper" data-iscroll>
+            <ul data-role="listview"  id="contact-list" data-theme="a">
+                
+            </ul>
+        </div>
+    </div>
+    <div data-theme="a" data-role="footer">
+        <h1>Created by: Amy Shu and Christopher Wang</h1>
+    </div>              
+</div>
+<div data-role="page" id="headline">
+    <div data-theme="a" data-role="header">
+        <a href="#home" class="ui-btn-left" data-transition="slide" data-direction="reverse">Back</a>                        
+        <h3>
+            Contact Info
+        </h3>
+    </div>        
+    <div data-role="content">
+        <ul data-role="listview"  id="contact-data" data-theme="a">
+            
+        </ul>
+    </div>
+</div>    
 
 <fb:login-button scope="read_mailbox" onlogin="checkLoginState();">
 </fb:login-button>
