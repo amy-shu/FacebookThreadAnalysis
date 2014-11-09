@@ -22,7 +22,7 @@
     // for FB.getLoginStatus().
     if (response.status === 'connected') {
       // Logged into your app and Facebook.
-      recursiveQuery("", 10);
+      recursiveQuery("");
       FB.api(
         "/me/",
         function (response) {
@@ -33,7 +33,7 @@
           }
         }
       );
-      query();
+      // query();
     } else if (response.status === 'not_authorized') {
       // The person is logged into Facebook, but not your app.
       document.getElementById('status').innerHTML = 'Please log ' +
@@ -82,7 +82,7 @@
 
   // LOL
   setTimeout(function() {
-    getMessages("Christopher Wang", data["Christopher Wang"].paging.next, 5);
+    getMessages("Christopher Wang", data["Christopher Wang"].paging.next, 3);
   }, 5000);
 
   };
@@ -121,24 +121,31 @@
   }
 
   var data = {};
-  function recursiveQuery(appendString, count) {
+  function recursiveQuery(appendString) {
     FB.api(
-      "/me/inbox?fields=id,to,comments&limit=1" + appendString,
+      "/me/inbox?fields=id,to,comments" + appendString,
       function (response) {
         if (response && !response.error) {
           /* handle the result */
-          var time = convertDate(response.data[0].updated_time);
-          str = "&until=" + time;    
-          if (response.data[0].to.data.length == 2) {
-            var name = response.data[0].to.data[1].name;
-            var body = response.data[0].comments;
-            data[name] = body;
-          }
-          if (count < 0) {
+          var objLst = response.data
+          for (i = 0; i < objLst.length; i++) {
+            if (response.data[i].to.data.length == 2) {
+              var key = response.data[i].to.data[1].name;
+              if (key == name) {
+                key = response.data[i].to.data[0].name;
+              }
+              var body = response.data[i].comments;
+              data[key] = body;
+            }
+          }  
+          var time = convertDate(response.data[objLst.length - 1].updated_time);
+          str = "&until=" + time;  
+          if (objLst.length <= 1) {
             console.log(response);
             console.log(data);
+            console.log(Object.keys(data).length);
           } else {
-            recursiveQuery(str, count - 1);
+            recursiveQuery(str);
           }          
         } else {
           console.log(response);
@@ -163,6 +170,22 @@
         }
       }
     );
+  }
+
+  function countWords(key, recipient) {
+    var count = {};
+    var body = data[key].data
+    for (i = 0; i < body.length; i++) {
+      var message = body[i];
+      var words = message.split(" ");
+      for (j = 0; j < words.length; j++) {
+        if (words[j] in count) {
+          count[words[j]] += 1;
+        } else {
+          count[words[j]] = 1;
+        }
+      }
+    }
   }
 
   function convertDate(str) {
