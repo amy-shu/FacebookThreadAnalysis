@@ -8,6 +8,8 @@
 <link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.4/jquery.mobile-1.4.4.min.css">
 <script language="javascript" type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
 <script src="http://code.jquery.com/mobile/1.4.4/jquery.mobile-1.4.4.min.js"></script>
+<script type="text/javascript" src="jquery.flot.js"></script>
+<script language="javascript" type="text/javascript" src="graph.js"></script>
 <script type="text/javascript"src="secrets.js"></script>
 <script>
   var name = '';
@@ -158,6 +160,7 @@
   var contactArray = [];
   var conversationID = 0;
   var messageData = {};
+  var beginningMessageObject = null;
   function recursivelyAddContacts(results) {
     for (var i=0; i < results['data'].length; i++) {
       var contactsInConversation = [];
@@ -172,14 +175,14 @@
         }
       }
       contactArray.push(contactsInConversation);
-      fuckFacebook(pictureId, contactsInConversation, conversationID);
+      addContactsWithPicture(pictureId, contactsInConversation, conversationID);
       conversationID += 1;
       messageData[contactsInConversation.join(", ")] = results['data'][i];
       //console.log(contactsInConversation);
     }
   }
 
-function fuckFacebook(pictureId, contactsInConversation, conversationID) {
+function addContactsWithPicture(pictureId, contactsInConversation, conversationID) {
   FB.api(
     "/" + pictureId + "/picture",
     function (response) {
@@ -197,7 +200,14 @@ $(document).on('vclick', '#contact-list li a', function(){
     //contactInfo.id = $(this).attr('data-id');
     z = $(this).attr('data-id');
     console.log(messageData[$(this)['context']['text']]);
+    beginningMessageObject = messageData[$(this)['context']['text']];
     $.mobile.changePage( "#headline", { transition: "slide", changeHash: false });
+});
+
+$(document).on('pagebeforeshow', '#headline', function(){      
+  //console.log(beginningMessageObject);
+  graph();    
+  //alert("HI");       
 });
 </script>
 
@@ -232,9 +242,7 @@ $(document).on('vclick', '#contact-list li a', function(){
         </h3>
     </div>        
     <div data-role="content">
-        <ul data-role="listview"  id="contact-data" data-theme="a">
-            
-        </ul>
+        <div id="subjects" style="width:600px; height:600px;"></div>
     </div>
 </div>    
 
