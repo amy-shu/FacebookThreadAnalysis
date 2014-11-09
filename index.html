@@ -17,7 +17,7 @@
     // for FB.getLoginStatus().
     if (response.status === 'connected') {
       // Logged into your app and Facebook.
-      query();
+      recursiveQuery("", 10);
     } else if (response.status === 'not_authorized') {
       // The person is logged into Facebook, but not your app.
       document.getElementById('status').innerHTML = 'Please log ' +
@@ -38,7 +38,7 @@
       statusChangeCallback(response);
     });
   }
-
+  
   window.fbAsyncInit = function() {
   FB.init({
     appId      : appId,
@@ -64,6 +64,11 @@
     statusChangeCallback(response);
   });
 
+  // LOL
+  setTimeout(function() {
+    getMessages("Christopher Wang", data["Christopher Wang"].paging.next, 5);
+  }, 5000);
+
   };
 
   // Load the SDK asynchronously
@@ -86,22 +91,54 @@
     });
   }
 
-  function query() {
+  var data = {};
+  function recursiveQuery(appendString, count) {
     FB.api(
-      "/me/inbox",
+      "/me/inbox?fields=id,to,comments&limit=1" + appendString,
       function (response) {
         if (response && !response.error) {
           /* handle the result */
+          var time = convertDate(response.data[0].updated_time);
+          str = "&until=" + time;    
+          if (response.data[0].to.data.length == 2) {
+            var name = response.data[0].to.data[1].name;
+            var body = response.data[0].comments;
+            data[name] = body;
+          }
+          if (count < 0) {
+            console.log(response);
+            console.log(data);
+          } else {
+            recursiveQuery(str, count - 1);
+          }          
+        } else {
           console.log(response);
+          console.log(data);
         }
       }
     );
   }
 
-  function query2() {
-    FB.api('/fql?=select+thread_id+from+thread+where+viewer_id=me()+and+folder_id=0', 'get', function(response) {
-      console.log(response);
-    });
+  function getMessages(key, next, count) {
+    FB.api(
+      next,
+      function (response) {
+        if (response && !response.error) {
+          data[key].data = response.data.concat(data[key].data);
+          data[key].paging = response.paging;
+          if (count > 0) {
+            getMessages(key, data[key].paging.next, count - 1);
+          } else {
+            console.log(data[key]);
+          }
+        }
+      }
+    );
+  }
+
+  function convertDate(str) {
+    var d = new Date(str);
+    return d.getTime();
   }
 
 </script>
